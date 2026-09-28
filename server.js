@@ -25,21 +25,19 @@ app.get('/webhook', (req, res) => {
  
 // ---- 2. Incoming messages (Meta POSTs here whenever a user messages you) ----
 app.post('/webhook', async (req, res) => {
-  // Always ack immediately - Meta retries aggressively if you're slow or error out
-  res.sendStatus(200);
- 
+  
   try {
     const entry = req.body.entry?.[0]?.changes?.[0]?.value;
     const message = entry?.messages?.[0];
  
-    if (!message) return; // could be a status update (delivered/read), not a real message
+    if (!message) return res.sendStatus(200); // could be a status update (delivered/read), not a real message
  
     const from = message.from;             // sender's WhatsApp number
     const text = message.text?.body;       // message text (undefined if it's an image/audio/etc.)
  
     console.log(`Incoming from ${from}: ${text}`);
  
-    if (!text) return; // skip non-text messages for now
+    if (!text) return res.sendStatus(200); // skip non-text messages for now
  
     // ---- Call your external API ----
     let replyText = "Sorry, I couldn't process that.";
@@ -53,6 +51,7 @@ app.post('/webhook', async (req, res) => {
     await sendWhatsAppMessage(from, replyText);
   } catch (err) {
     console.error('Error handling incoming message:', err.response?.data || err.message);
+    res.sendStatus(200);
   }
 });
  
