@@ -13,6 +13,7 @@ const {
   WA_TOKEN,          // permanent WhatsApp access token (System User token)
   PHONE_NUMBER_ID,   // Phone number ID from the API Setup page (not the WABA ID)
   EXTERNAL_API_URL,  // optional: your backend / LLM endpoint 
+  APP_SECRET,
 } = process.env;
 
 // ---- Signature check (skipped if APP_SECRET is not set) ----
