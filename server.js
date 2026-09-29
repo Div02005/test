@@ -65,15 +65,12 @@ app.post('/webhook', async (req, res) => {
     console.log(`Incoming from ${from}: ${text}`);
 
     let replyText;
-    if (EXTERNAL_API_URL) {
-      const apiRes = await axios.post(
-        EXTERNAL_API_URL,
-        { message: text, from },
-        { timeout: 8000 }
-      );
-      replyText = apiRes.data.reply || apiRes.data.result || JSON.stringify(apiRes.data);
-    } else {
-      replyText = `Echo: ${text}`;
+    try {
+      const jokeRes = await axios.get('https://v2.jokeapi.dev/joke/Any?type=single&safe-mode');
+      replyText = jokeRes.data.joke;
+    } catch (apiErr) {
+      console.error('JokeAPI call failed:', apiErr.message);
+      replyText = "Couldn't fetch a joke right now, try again!";
     }
 
     await sendWhatsAppMessage(from, String(replyText).slice(0, 4000));
