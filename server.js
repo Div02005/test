@@ -14,6 +14,7 @@ const {
   PHONE_NUMBER_ID,   // Phone number ID from the API Setup page (not the WABA ID)
   EXTERNAL_API_URL,  // optional: your backend / LLM endpoint 
   APP_SECRET,
+  GEMINI_API_KEY,      // optional: your Gemini API key
 } = process.env;
 
 // ---- Signature check (skipped if APP_SECRET is not set) ----
@@ -66,11 +67,14 @@ app.post('/webhook', async (req, res) => {
 
     let replyText;
     try {
-      const jokeRes = await axios.get('https://v2.jokeapi.dev/joke/Any?type=single&safe-mode');
-      replyText = jokeRes.data.joke;
+      const geminiRes = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        { contents: [{ parts: [{ text }] }] }
+      );
+      replyText = geminiRes.data.candidates[0].content.parts[0].text;
     } catch (apiErr) {
-      console.error('JokeAPI call failed:', apiErr.message);
-      replyText = "Couldn't fetch a joke right now, try again!";
+      console.error('Gemini call failed:', apiErr.response?.data || apiErr.message);
+      replyText = "Couldn't get a response right now, try again!";
     }
 
     await sendWhatsAppMessage(from, String(replyText).slice(0, 4000));
