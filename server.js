@@ -1,3 +1,5 @@
+import PDFDocument from 'pdfkit';
+import FormData from 'form-data';
 import express from 'express';
 import axios from 'axios';
 import crypto from 'crypto';
@@ -101,7 +103,62 @@ async function sendWhatsAppMessage(to, body) {
     }
   );
 }
+// Parses "QUOTE\nName: X\nItem: Y..." into an object
+function parseQuoteMessage(text) {
+  const fields = {};
+  text.split('\n').slice(1).forEach(line => {
+    const [key, ...rest] = line.split(':');
+    if (key && rest.length) fields[key.trim()] = rest.join(':').trim();
+  });
+  return fields;
+}
 
+// Builds a PDF in memory and returns it as a Buffer
+function generateQuotePDF(fields) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const chunks = [];
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    doc.fontSize(20).text('Quotation', { align: 'center' });
+    doc.moveDown(2);
+    Object.entries(fields).forEach(([key, value]) => {
+      doc.fontSize(12).text(`${key}: ${value}`);
+      doc.moveDown(0.5);
+    });
+    doc.end();
+  });
+}
+
+// Uploads the PDF buffer to WhatsApp's Media API, returns a media ID
+async function uploadPDFToWhatsApp(pdfBuffer) {
+  const form = new FormData();
+  form.append('file', pdfBuffer, { filename: 'quote.pdf', contentType: 'application/pdf' });
+  form.append('messaging_product', 'whatsapp');
+
+  const res = await axios.post(
+    `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/media`,
+    form,
+    { headers: { ...form.getHeaders(), Authorization: `Bearer ${WA_TOKEN}` } }
+  );
+  return res.data.id;
+}
+
+// Sends the uploaded PDF as a WhatsApp document message
+async function sendWhatsAppDocument(to, mediaId, filename) {
+  return axios.post(
+    `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`,
+    {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'document',
+      document: { id: mediaId, filename },
+    },
+    { headers: { Authorization: `Bearer ${WA_TOKEN}` } }
+  );
+}
 // ---- Health check ----
 app.get('/', (_req, res) => res.send('WhatsApp bot server is running.'));
 
