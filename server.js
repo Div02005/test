@@ -66,7 +66,13 @@ app.post('/webhook', async (req, res) => {
 
     const text = message.text.body;
     console.log(`Incoming from ${from}: ${text}`);
-
+    if (text.trim().toUpperCase().startsWith('QUOTE')) {
+      const fields = parseQuoteMessage(text);
+      const pdfBuffer = await generateQuotePDF(fields);
+      const mediaId = await uploadPDFToWhatsApp(pdfBuffer);
+      await sendWhatsAppDocument(from, mediaId, 'quote.pdf');
+      return res.sendStatus(200);
+    }
     let replyText;
     try {
       const geminiRes = await axios.post(
